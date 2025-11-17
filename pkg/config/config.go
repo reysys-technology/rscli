@@ -12,6 +12,9 @@ var (
 
 	// RsSecret is the Reysys secret from RS_SECRET env var
 	RsSecret string
+
+	// BaseURL is the base URL for API requests
+	BaseURL string
 )
 
 // Init initializes the configuration using Viper
@@ -29,6 +32,7 @@ func Init() error {
 	// Bind specific environment variables
 	viper.BindEnv("secret_id", "RS_SECRET_ID")
 	viper.BindEnv("secret", "RS_SECRET")
+	viper.BindEnv("base_url", "RS_BASE_URL")
 
 	// Read config file (optional - won't error if not found)
 	if err := viper.ReadInConfig(); err != nil {
@@ -40,6 +44,12 @@ func Init() error {
 	// Load values into global variables
 	RsSecretID = viper.GetString("secret_id")
 	RsSecret = viper.GetString("secret")
+	BaseURL = viper.GetString("base_url")
+
+	// Set default BaseURL if not provided
+	if BaseURL == "" {
+		BaseURL = "http://localhost:9670"
+	}
 
 	// Validate required credentials
 	if RsSecretID == "" || RsSecret == "" {

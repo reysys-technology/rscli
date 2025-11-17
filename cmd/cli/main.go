@@ -15,6 +15,7 @@ var command = &cobra.Command{
 }
 
 func init() {
+	command.PersistentFlags().StringVar(&config.BaseURL, "url", "http://localhost:9670", "Base URL for API requests")
 	command.AddCommand(account.Command)
 }
 

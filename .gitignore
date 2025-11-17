@@ -440,6 +440,4 @@ Temporary Items
 **/.claude
 **/.run
 **/.idea
-
-# Reysys CLI config file with credentials
-config.yaml
+cli

@@ -1,6 +1,0 @@
-# Reysys CLI Configuration File
-# Copy this file to config.yaml or ~/.reysys/config.yaml
-
-# Reysys credentials
-secret_id: "your_secret_id_here"
-secret: "your_secret_here"
