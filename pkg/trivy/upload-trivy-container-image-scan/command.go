@@ -1,4 +1,4 @@
-package getaccountinformation
+package uploadtrivycontainerimagescan
 
 import (
 	"bytes"
@@ -7,15 +7,25 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 
 	"github.com/reysys-technology/cli/pkg/config"
 
 	"github.com/spf13/cobra"
 )
 
+var (
+	scanFilePath string
+)
+
 var Command = &cobra.Command{
-	Use:  "get-account-information",
+	Use:  "upload-trivy-container-image-scan",
 	RunE: run,
+}
+
+func init() {
+	Command.Flags().StringVarP(&scanFilePath, "file", "f", "", "Path to the Trivy JSON scan result file (required)")
+	Command.MarkFlagRequired("file")
 }
 
 // TokenResponse represents the response from the token endpoint
@@ -76,6 +86,18 @@ func getSessionToken(client *http.Client) (string, error) {
 }
 
 func run(cmd *cobra.Command, args []string) error {
+	// Read the Trivy scan JSON file
+	scanData, err := os.ReadFile(scanFilePath)
+	if err != nil {
+		return fmt.Errorf("failed to read scan file: %w", err)
+	}
+
+	// Validate that it's valid JSON
+	var scanJSON json.RawMessage
+	if err := json.Unmarshal(scanData, &scanJSON); err != nil {
+		return fmt.Errorf("invalid JSON in scan file: %w", err)
+	}
+
 	// Create HTTP client with TLS config (for localhost with self-signed cert)
 	tr := &http.Transport{
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
@@ -88,18 +110,11 @@ func run(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to get session token: %w", err)
 	}
 
-	// Now make the actual API request
-	url := fmt.Sprintf("%s/account/get-account-information", config.BaseURL)
+	// Now make the API request to upload the scan
+	url := fmt.Sprintf("%s/trivy/upload-trivy-container-image-scan", config.BaseURL)
 
-	// Prepare request body (empty for now, modify as needed)
-	requestBody := map[string]interface{}{}
-	jsonData, err := json.Marshal(requestBody)
-	if err != nil {
-		return fmt.Errorf("failed to marshal request: %w", err)
-	}
-
-	// Create POST request
-	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
+	// Create POST request with the scan data
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer(scanData))
 	if err != nil {
 		return fmt.Errorf("failed to create request: %w", err)
 	}
@@ -121,8 +136,14 @@ func run(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to read response: %w", err)
 	}
 
-	// Print response
+	// Check status code
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("upload failed with status %d: %s", resp.StatusCode, string(body))
+	}
+
+	// Print success response
 	fmt.Printf("Status: %s\n", resp.Status)
+	fmt.Printf("Scan uploaded successfully!\n")
 	fmt.Printf("Response:\n%s\n", string(body))
 
 	return nil

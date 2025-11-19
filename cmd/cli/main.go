@@ -4,8 +4,9 @@ import (
 	"fmt"
 	"os"
 
-	"cli/pkg/account"
-	"cli/pkg/config"
+	"github.com/reysys-technology/cli/pkg/account"
+	"github.com/reysys-technology/cli/pkg/config"
+	"github.com/reysys-technology/cli/pkg/trivy"
 
 	"github.com/spf13/cobra"
 )
@@ -17,10 +18,10 @@ var command = &cobra.Command{
 func init() {
 	command.PersistentFlags().StringVar(&config.BaseURL, "url", "http://localhost:9670", "Base URL for API requests")
 	command.AddCommand(account.Command)
+	command.AddCommand(trivy.Command)
 }
 
 func main() {
-	// Initialize configuration using Viper
 	if err := config.Init(); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)

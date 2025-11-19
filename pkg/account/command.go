@@ -1,7 +1,7 @@
 package account
 
 import (
-	getaccountinformation "cli/pkg/account/get-account-information"
+	getaccountinformation "github.com/reysys-technology/cli/pkg/account/get-account-information"
 
 	"github.com/spf13/cobra"
 )
