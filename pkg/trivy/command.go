@@ -1,7 +1,7 @@
 package trivy
 
 import (
-	uploadtrivycontainerimagescan "github.com/reysys-technology/cli/pkg/trivy/upload-trivy-container-image-scan"
+	uploadtrivycontainerimagescan "github.com/reysys-technology/rscli/pkg/trivy/upload-trivy-container-image-scan"
 
 	"github.com/spf13/cobra"
 )

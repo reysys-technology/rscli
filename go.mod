@@ -1,4 +1,4 @@
-module github.com/reysys-technology/cli
+module github.com/reysys-technology/rscli
 
 go 1.24.2
 

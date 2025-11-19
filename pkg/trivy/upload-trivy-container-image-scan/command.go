@@ -9,7 +9,7 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/reysys-technology/cli/pkg/config"
+	"github.com/reysys-technology/rscli/pkg/config"
 
 	"github.com/spf13/cobra"
 )

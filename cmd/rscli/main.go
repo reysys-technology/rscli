@@ -4,15 +4,15 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/reysys-technology/cli/pkg/account"
-	"github.com/reysys-technology/cli/pkg/config"
-	"github.com/reysys-technology/cli/pkg/trivy"
+	"github.com/reysys-technology/rscli/pkg/account"
+	"github.com/reysys-technology/rscli/pkg/config"
+	"github.com/reysys-technology/rscli/pkg/trivy"
 
 	"github.com/spf13/cobra"
 )
 
 var command = &cobra.Command{
-	Use: "cli",
+	Use: "rscli",
 }
 
 func init() {

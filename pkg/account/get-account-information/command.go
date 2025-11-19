@@ -8,7 +8,7 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/reysys-technology/cli/pkg/config"
+	"github.com/reysys-technology/rscli/pkg/config"
 
 	"github.com/spf13/cobra"
 )
