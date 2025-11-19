@@ -6,8 +6,9 @@ before:
     - go mod tidy
 
 archives:
-  - format: binary
-
+  - id: default
+    formats: binary
+    name_template: "{{ .ProjectName }}_{{ .Os }}_{{ .Arch }}"
 builds:
   - id: rscli
     binary: rscli
