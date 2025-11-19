@@ -16,11 +16,12 @@ checksum:
 builds:
   - id: rscli
     binary: rscli
-    main: ./cmd/cli
+    main: ./cmd/rscli
     env:
       - CGO_ENABLED=0
     ldflags:
       - -s -w -extldflags "-static"
+      - -X main.version={{.Version}}
     flags:
       - -trimpath
     tags:

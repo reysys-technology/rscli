@@ -11,8 +11,11 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var version = "dev"
+
 var command = &cobra.Command{
-	Use: "rscli",
+	Use:     "rscli",
+	Version: version,
 }
 
 func init() {
@@ -22,11 +25,6 @@ func init() {
 }
 
 func main() {
-	if err := config.Init(); err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		os.Exit(1)
-	}
-
 	if err := command.Execute(); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
