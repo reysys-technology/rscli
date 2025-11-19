@@ -17,6 +17,15 @@ builds:
   - id: rscli
     binary: rscli
     main: ./cmd/cli
+    env:
+      - CGO_ENABLED=0
+    ldflags:
+      - -s -w -extldflags "-static"
+    flags:
+      - -trimpath
+    tags:
+      - netgo
+      - osusergo
     goarch:
       - amd64
       - arm64

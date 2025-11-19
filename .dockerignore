@@ -212,7 +212,12 @@ Temporary Items
 
 ### Custom.gitignore
 **/.claude
+**/dist
 **/.run
 **/.idea
+.dockerignore
+**/.git
+.gitignore
+Dockerfile
 rscli
-**/dist
+README.md
