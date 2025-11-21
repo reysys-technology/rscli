@@ -13,7 +13,6 @@ func Root(version string) *cobra.Command {
 		Version: version,
 	}
 
-	// URL flag removed - use RS_BASE_URL env var or config file
 	command.AddCommand(account.Command)
 	command.AddCommand(trivy.Command)
 
