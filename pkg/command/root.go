@@ -3,7 +3,6 @@ package command
 import (
 	"github.com/reysys-technology/rscli/pkg/command/account"
 	"github.com/reysys-technology/rscli/pkg/command/trivy"
-	"github.com/reysys-technology/rscli/pkg/config"
 
 	"github.com/spf13/cobra"
 )
@@ -14,7 +13,7 @@ func Root(version string) *cobra.Command {
 		Version: version,
 	}
 
-	command.PersistentFlags().StringVar(&config.BaseURL, "url", config.BaseURL, "Base URL for API requests (default from RS_BASE_URL or http://localhost:9670)")
+	// URL flag removed - use RS_BASE_URL env var or config file
 	command.AddCommand(account.Command)
 	command.AddCommand(trivy.Command)
 

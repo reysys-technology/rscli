@@ -8,8 +8,7 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/reysys-technology/rscli/pkg/config"
-
+	"github.com/reysys-technology/rscli/pkg"
 	"github.com/spf13/cobra"
 )
 
@@ -27,12 +26,12 @@ type TokenResponse struct {
 
 // getSessionToken obtains a JWT session token using the secret credentials
 func getSessionToken(client *http.Client) (string, error) {
-	url := fmt.Sprintf("%s/token/get-session-token", config.BaseURL)
+	url := fmt.Sprintf("%s/token/get-session-token", pkg.GetBaseURL())
 
 	// Prepare request body with secret_id and secret
 	requestBody := map[string]string{
-		"secret_id": config.RsSecretID,
-		"secret":    config.RsSecret,
+		"secret_id": pkg.GetSecretId(),
+		"secret":    pkg.GetSecret(),
 	}
 	jsonData, err := json.Marshal(requestBody)
 	if err != nil {
@@ -89,7 +88,7 @@ func run(cmd *cobra.Command, args []string) error {
 	}
 
 	// Now make the actual API request
-	url := fmt.Sprintf("%s/account/get-account-information", config.BaseURL)
+	url := fmt.Sprintf("%s/account/get-account-information", pkg.GetBaseURL())
 
 	// Prepare request body (empty for now, modify as needed)
 	requestBody := map[string]interface{}{}
