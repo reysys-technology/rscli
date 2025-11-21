@@ -14,19 +14,16 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var (
-	scanFilePath string
-)
+var scanFilePath string
 
-var Command = &cobra.Command{
-	Use:  "upload-trivy-container-image-scan",
-	RunE: run,
-}
-
-func init() {
-	Command.Flags().StringVarP(&scanFilePath, "file", "f", "", "Path to the Trivy JSON scan result file (required)")
-	Command.MarkFlagRequired("file")
-}
+var Command = func() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:  "upload-trivy-container-image-scan",
+		RunE: run,
+	}
+	cmd.Flags().StringVarP(&scanFilePath, "file", "f", "", "Path to the Trivy JSON scan result file (required)")
+	return cmd
+}()
 
 // TokenResponse represents the response from the token endpoint
 type TokenResponse struct {
