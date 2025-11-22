@@ -34,19 +34,15 @@ func main() {
 }
 
 func genTree(cmd, root *cobra.Command, dir string, isRoot bool) error {
-	var filename string
-
 	if cmd.HasSubCommands() {
 		var subDir string
 		if isRoot {
 			subDir = dir
-			filename = filepath.Join(dir, "_index.md")
 		} else {
 			subDir = filepath.Join(dir, cmd.Name())
 			if err := os.MkdirAll(subDir, 0755); err != nil {
 				return err
 			}
-			filename = filepath.Join(subDir, "_index.md")
 		}
 
 		for _, c := range cmd.Commands() {
@@ -57,9 +53,10 @@ func genTree(cmd, root *cobra.Command, dir string, isRoot bool) error {
 				return err
 			}
 		}
-	} else {
-		filename = filepath.Join(dir, cmd.Name()+".md")
+		return nil
 	}
+
+	filename := filepath.Join(dir, cmd.Name()+".md")
 
 	f, err := os.Create(filename)
 	if err != nil {
@@ -67,8 +64,8 @@ func genTree(cmd, root *cobra.Command, dir string, isRoot bool) error {
 	}
 	defer f.Close()
 
-	// Front matter (TOML for Docsy)
-	frontMatter := fmt.Sprintf("+++\ntitle = %q\ntype = \"docs\"\ndescription = %q\n+++\n\n", cmd.Name(), cmd.Short)
+	// Front matter (YAML for Docusaurus)
+	frontMatter := fmt.Sprintf("---\ntitle: %q\ndescription: %q\n---\n\n", cmd.Name(), cmd.Short)
 	if _, err := f.WriteString(frontMatter); err != nil {
 		return err
 	}
@@ -118,14 +115,11 @@ func genTree(cmd, root *cobra.Command, dir string, isRoot bool) error {
 			result += strings.Join(downs, "/")
 		}
 
-		// Hugo URLs use trailing slash, not .md
+		// Docusaurus uses .md extensions
 		if result == "" {
-			return target.Name() + "/"
+			return target.Name() + ".md"
 		}
-		if strings.HasSuffix(result, "/") {
-			return result
-		}
-		return result + "/"
+		return result + ".md"
 	}
 
 	// Generate content
@@ -140,7 +134,7 @@ func genTree(cmd, root *cobra.Command, dir string, isRoot bool) error {
 		content = content[idx+1:]
 	}
 
-	// Remove SEE ALSO section (Docsy handles navigation)
+	// Remove SEE ALSO section (Docusaurus handles navigation)
 	if idx := bytes.Index(content, []byte("### SEE ALSO")); idx != -1 {
 		content = content[:idx]
 	}
