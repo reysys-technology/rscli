@@ -13,6 +13,18 @@ archives:
 checksum:
   name_template: checksums.txt
 
+homebrew_casks:
+  - name: rscli
+    repository:
+      owner: reysys-technology
+      name: homebrew-rscli
+
+    homepage: "https://github.com/reysys-technology/rscli"
+
+    commit_author:
+      name: goreleaserbot
+      email: goreleaserbot@reysys.com
+
 builds:
   - id: rscli
     binary: rscli
