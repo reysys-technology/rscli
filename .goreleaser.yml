@@ -17,16 +17,25 @@ homebrew_casks:
   - name: rscli
     repository:
       owner: reysys-technology
-      name: homebrew-rscli
+      name: homebrew-tap
+      pull_request:
+        enabled: true
 
-    homepage: "https://github.com/reysys-technology/rscli"
+    homepage: https://github.com/reysys-technology/rscli
+    description: Reysys CLI
 
     commit_author:
-      name: goreleaserbot
-      email: goreleaserbot@reysys.com
+      name: goreleaser-bot
+      email: support@reysys.com
+    hooks:
+      post:
+        install: |
+          if OS.mac?
+            system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}"]
+          end
 
 builds:
-  - id: rscli
+  - id: default
     binary: rscli
     main: ./cmd/rscli
     env:
@@ -47,6 +56,22 @@ builds:
       - linux
       - windows
 
+nfpms:
+  - id: default
+    package_name: rscli
+    file_name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    vendor: Reysys Technology
+    homepage: https://github.com/reysys-technology/rscli
+    maintainer: Reysys <support@reysys.com>
+    description: Reysys CLI
+    license: Apache-2.0
+    formats:
+      - apk
+      - deb
+      - rpm
+
 changelog: { }
 
-release: { }
+release:
+  draft: true
+  replace_existing_draft: true
