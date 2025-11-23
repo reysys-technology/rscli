@@ -6,12 +6,19 @@ before:
     - go mod tidy
 
 archives:
-  - id: default
-    formats: binary
+  - formats: binary
     name_template: "{{ .ProjectName }}_{{ .Os }}_{{ .Arch }}"
 
 checksum:
   name_template: checksums.txt
+
+dockers_v2:
+  - images:
+      - ghcr.io/reysys-technology/rscli
+      - reysys/rscli
+    tags:
+      - "{{ .Major }}"
+      - "{{ .Version }}"
 
 furies:
   - account: reysys
@@ -46,8 +53,7 @@ homebrew_casks:
           end
 
 builds:
-  - id: default
-    binary: rscli
+  - binary: rscli
     main: ./cmd/rscli
     env:
       - CGO_ENABLED=0
@@ -68,13 +74,13 @@ builds:
       - windows
 
 nfpms:
-  - id: default
-    package_name: rscli
+  - package_name: rscli
     vendor: Reysys Technology
     homepage: https://github.com/reysys-technology/rscli
     maintainer: reysys <support@reysys.com>
     description: Reysys CLI
     license: Apache-2.0
+    file_name_template: '{{ .PackageName }}_{{ .Os }}_{{ .Arch }}{{ with .Arm }}v{{ . }}{{ end }}{{ with .Mips }}_{{ . }}{{ end }}{{ if not (eq .Amd64 "v1") }}{{ .Amd64 }}{{ end }}'
     formats:
       - apk
       - deb
