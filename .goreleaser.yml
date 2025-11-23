@@ -13,13 +13,24 @@ archives:
 checksum:
   name_template: checksums.txt
 
+furies:
+  - account: reysys
+
 homebrew_casks:
   - name: rscli
+    alternative_names:
+      - "rscli@{{ .Major }}"
+      - "rscli@{{ .Version }}"
     repository:
       owner: reysys-technology
       name: homebrew-tap
+      branch: "{{ .ProjectName }}-{{ .Version }}"
       pull_request:
         enabled: true
+        base:
+          owner: reysys-technology
+          name: homebrew-tap
+          branch: main
 
     homepage: https://github.com/reysys-technology/rscli
     description: Reysys CLI
@@ -59,10 +70,9 @@ builds:
 nfpms:
   - id: default
     package_name: rscli
-    file_name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
     vendor: Reysys Technology
     homepage: https://github.com/reysys-technology/rscli
-    maintainer: Reysys <support@reysys.com>
+    maintainer: reysys <support@reysys.com>
     description: Reysys CLI
     license: Apache-2.0
     formats:
