@@ -17,6 +17,7 @@ dockers_v2:
       - ghcr.io/reysys-technology/rscli
       - reysys/rscli
     tags:
+      -  latest
       - "{{ .Major }}"
       - "{{ .Version }}"
 
@@ -85,6 +86,15 @@ nfpms:
       - apk
       - deb
       - rpm
+    apk:
+      signature:
+        key_file: /tmp/rsa.key
+    deb:
+      signature:
+        key_file: /tmp/gpg.key
+    rpm:
+      signature:
+        key_file: /tmp/gpg.key
 
 changelog: { }
 
