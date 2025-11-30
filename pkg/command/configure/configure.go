@@ -22,7 +22,7 @@ var Command = &cobra.Command{
 		"```yaml\n" +
 		"secret_id: your-secret-id\n" +
 		"secret: your-secret\n" +
-		"base_url: https://api.reysys.com\n" +
+		"base_url: http://localhost:9670\n" +
 		"```\n\n" +
 		"## Priority\n\n" +
 		"Environment variables take precedence over config file values.\n\n" +

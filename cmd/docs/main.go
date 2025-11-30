@@ -13,10 +13,8 @@ import (
 	"github.com/spf13/cobra/doc"
 )
 
-var version = "dev"
-
 func main() {
-	root := command.Root(version)
+	root := command.Root()
 	root.DisableAutoGenTag = true
 
 	outputDir := "dist/docs"

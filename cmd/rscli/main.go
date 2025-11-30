@@ -7,10 +7,8 @@ import (
 	"github.com/reysys-technology/rscli/pkg/command"
 )
 
-var version = "dev"
-
 func main() {
-	root := command.Root(version)
+	root := command.Root()
 
 	if err := root.Execute(); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
