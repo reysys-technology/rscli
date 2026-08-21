@@ -6,12 +6,13 @@ prioritised alongside everything else you scan.
 
 ## Install
 
-Binaries for each release are published on the releases page, and a container
-image at `ghcr.io/reysys-technology/rscli`. To build from source:
-
 ```shell
 go install github.com/reysys-technology/rscli/cmd/rscli@latest
 ```
+
+This is how `setup-rscli-action` installs it, so it is the path that gets the most
+use. Signed binaries and a container image at `ghcr.io/reysys-technology/rscli`
+are published for some releases; check the releases page for the version you want.
 
 ## Credentials
 
