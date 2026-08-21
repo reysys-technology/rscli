@@ -2,6 +2,7 @@ package pkg
 
 import (
 	"fmt"
+	"net/url"
 	"strings"
 
 	"github.com/spf13/viper"
@@ -40,8 +41,12 @@ func Load() (Config, error) {
 	v := viper.New()
 	v.SetConfigName("config")
 	v.SetConfigType("yaml")
+	// Only the user's own home directory. Deliberately NOT the working directory:
+	// in CI the working directory is the checked-out branch, so reading
+	// ./config.yaml would let a pull request supply its own token_url and receive
+	// the client credentials. A contributor who cannot edit the workflow could
+	// still exfiltrate the secret by adding a file.
 	v.AddConfigPath("$HOME/.reysys")
-	v.AddConfigPath(".")
 
 	v.SetEnvPrefix("RS")
 	v.AutomaticEnv()
@@ -72,6 +77,10 @@ func Load() (Config, error) {
 		InsecureSkipVerify: v.GetBool("insecure_skip_verify"),
 	}
 
+	if err := cfg.checkTokenURL(); err != nil {
+		return Config{}, err
+	}
+
 	if cfg.ClientID == "" || cfg.ClientSecret == "" {
 		return Config{}, fmt.Errorf(
 			"missing credentials: set RS_CLIENT_ID and RS_CLIENT_SECRET " +
@@ -88,4 +97,34 @@ func firstNonEmpty(values ...string) string {
 		}
 	}
 	return ""
+}
+
+// checkTokenURL refuses to send credentials somewhere implausible.
+//
+// The credentials are posted to TokenURL, so whoever controls that value
+// receives them. It is settable by environment variable for self-hosted
+// deployments, which is legitimate — but it must at least be https, and a
+// plaintext endpoint is never acceptable for a client secret.
+func (c Config) checkTokenURL() error {
+	parsed, err := url.Parse(c.TokenURL)
+	if err != nil {
+		return fmt.Errorf("token URL %q is not a valid URL: %w", c.TokenURL, err)
+	}
+	if parsed.Host == "" {
+		return fmt.Errorf("token URL %q has no host", c.TokenURL)
+	}
+	if parsed.Scheme != "https" {
+		// Localhost over http is how the stack runs on a laptop.
+		if parsed.Scheme == "http" && isLoopback(parsed.Hostname()) {
+			return nil
+		}
+		return fmt.Errorf(
+			"refusing to send credentials to %s over %s — the token URL must be https",
+			parsed.Host, parsed.Scheme)
+	}
+	return nil
+}
+
+func isLoopback(host string) bool {
+	return host == "localhost" || host == "127.0.0.1" || host == "::1"
 }
