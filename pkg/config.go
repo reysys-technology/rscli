@@ -2,80 +2,90 @@ package pkg
 
 import (
 	"fmt"
-	"log"
+	"strings"
 
 	"github.com/spf13/viper"
 )
 
+// Config is everything rscli needs to talk to a Reysys deployment.
+//
+// Credentials are an OAuth2 client-credentials pair, minted in the console under
+// Account Info ("provision an API client"). They are exchanged at the Keycloak
+// token endpoint for a short-lived bearer token; there is no refresh token in
+// this grant, so every invocation fetches its own.
+//
+// The older RS_SECRET_ID / RS_SECRET names are still accepted, because that is
+// what existing pipelines have in their secret stores. They mean the same thing.
 type Config struct {
-	SecretId string
-	Secret   string
-	BaseUrl  string
+	ClientID     string
+	ClientSecret string
+	BaseURL      string
+	TokenURL     string
+
+	// InsecureSkipVerify disables TLS certificate verification. It exists for
+	// developers running the stack locally behind a self-signed certificate and
+	// must be asked for explicitly — earlier versions of this CLI hard-coded it
+	// on, which silently disabled verification while carrying the secret.
+	InsecureSkipVerify bool
 }
 
-func GetConfig() (Config, error) {
-	// Set config file name and paths
-	viper.SetConfigName("config")
-	viper.SetConfigType("yaml")
-	viper.AddConfigPath("$HOME/.reysys")
-	viper.AddConfigPath(".")
+const (
+	defaultBaseURL  = "https://api.reysys.com"
+	defaultTokenURL = "https://accounts.reysys.com/realms/accounts/protocol/openid-connect/token"
+)
 
-	// Set environment variable prefix
-	viper.SetEnvPrefix("RS")
-	viper.AutomaticEnv()
+// Load reads configuration from, in decreasing precedence: environment
+// variables, ./config.yaml, $HOME/.reysys/config.yaml, then defaults.
+func Load() (Config, error) {
+	v := viper.New()
+	v.SetConfigName("config")
+	v.SetConfigType("yaml")
+	v.AddConfigPath("$HOME/.reysys")
+	v.AddConfigPath(".")
 
-	// Bind specific environment variables
-	viper.BindEnv("secret_id", "RS_SECRET_ID")
-	viper.BindEnv("secret", "RS_SECRET")
-	viper.BindEnv("base_url", "RS_BASE_URL")
+	v.SetEnvPrefix("RS")
+	v.AutomaticEnv()
 
-	// Read config file (optional - won't error if not found)
-	if err := viper.ReadInConfig(); err != nil {
-		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
-			return Config{}, fmt.Errorf("error reading config file: %w", err)
+	for key, envs := range map[string][]string{
+		"client_id":            {"RS_CLIENT_ID", "RS_SECRET_ID"},
+		"client_secret":        {"RS_CLIENT_SECRET", "RS_SECRET"},
+		"base_url":             {"RS_BASE_URL"},
+		"token_url":            {"RS_TOKEN_URL"},
+		"insecure_skip_verify": {"RS_INSECURE_SKIP_VERIFY"},
+	} {
+		for _, env := range envs {
+			_ = v.BindEnv(key, env)
 		}
 	}
 
-	// Load values
+	if err := v.ReadInConfig(); err != nil {
+		if _, notFound := err.(viper.ConfigFileNotFoundError); !notFound {
+			return Config{}, fmt.Errorf("reading config file: %w", err)
+		}
+	}
+
 	cfg := Config{
-		SecretId: viper.GetString("secret_id"),
-		Secret:   viper.GetString("secret"),
-		BaseUrl:  viper.GetString("base_url"),
+		ClientID:           firstNonEmpty(v.GetString("client_id"), v.GetString("secret_id")),
+		ClientSecret:       firstNonEmpty(v.GetString("client_secret"), v.GetString("secret")),
+		BaseURL:            strings.TrimRight(firstNonEmpty(v.GetString("base_url"), defaultBaseURL), "/"),
+		TokenURL:           firstNonEmpty(v.GetString("token_url"), defaultTokenURL),
+		InsecureSkipVerify: v.GetBool("insecure_skip_verify"),
 	}
 
-	// Set default BaseUrl if not provided
-	if cfg.BaseUrl == "" {
-		cfg.BaseUrl = "http://localhost:9670"
+	if cfg.ClientID == "" || cfg.ClientSecret == "" {
+		return Config{}, fmt.Errorf(
+			"missing credentials: set RS_CLIENT_ID and RS_CLIENT_SECRET " +
+				"(provision them in the console under Account Info), " +
+				"or put client_id / client_secret in ~/.reysys/config.yaml")
 	}
-
-	// Validate required credentials
-	if cfg.SecretId == "" || cfg.Secret == "" {
-		return Config{}, fmt.Errorf("RS_SECRET_ID and RS_SECRET must be set (via environment variables or config file)")
-	}
-
 	return cfg, nil
 }
 
-func GetSecretId() string {
-	cfg, err := GetConfig()
-	if err != nil {
-		log.Fatalf("Failed to get config: %v", err)
+func firstNonEmpty(values ...string) string {
+	for _, value := range values {
+		if value != "" {
+			return value
+		}
 	}
-	return cfg.SecretId
-}
-
-func GetSecret() string {
-	cfg, err := GetConfig()
-	if err != nil {
-		log.Fatalf("Failed to get config: %v", err)
-	}
-	return cfg.Secret
-}
-
-func GetBaseURL() string {
-	cfg, err := GetConfig()
-	if err != nil {
-		log.Fatalf("Failed to get config: %v", err)
-	}
-	return cfg.BaseUrl
+	return ""
 }
