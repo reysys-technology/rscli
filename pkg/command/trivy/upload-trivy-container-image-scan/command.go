@@ -7,6 +7,7 @@ import (
 
 	"github.com/reysys-technology/rscli/pkg"
 	"github.com/reysys-technology/rscli/pkg/api"
+	"github.com/reysys-technology/rscli/pkg/gate"
 
 	"github.com/spf13/cobra"
 )
@@ -16,7 +17,10 @@ import (
 // repository — and decides which from the report's own ArtifactType field.
 const ingestPath = "/trivy.json.ingest"
 
-var scanFilePath string
+var (
+	scanFilePath string
+	enforceGate  bool
+)
 
 var Command = func() *cobra.Command {
 	cmd := &cobra.Command{
@@ -28,10 +32,22 @@ var Command = func() *cobra.Command {
 			"  rscli trivy upload-trivy-container-image-scan -f scan.json\n\n" +
 			"Repository reports work the same way:\n\n" +
 			"  trivy repo --format json -o scan.json .\n\n" +
-			"Credentials come from RS_CLIENT_ID and RS_CLIENT_SECRET; see `rscli configure`.",
-		RunE: run,
+			"Credentials come from RS_CLIENT_ID and RS_CLIENT_SECRET; see `rscli configure`.\n\n" +
+			"With --gate, the command exits non-zero when the scan does not meet the policy\n" +
+			"configured in the console, so the pipeline step fails:\n\n" +
+			"  0  passed, or no policy is enforced for this target\n" +
+			"  1  the tool could not do its job (bad config, upload failed, or Reysys\n" +
+			"     could not evaluate the scan) — never a statement about your code\n" +
+			"  2  the artifact did not meet the policy\n" +
+			"  3  the scan could not be judged, and the policy says not to allow that\n\n" +
+			"Without --gate the verdict is printed and the command still succeeds, so a\n" +
+			"team can watch what the gate would do before letting it block anything.",
+		RunE:          run,
+		SilenceUsage:  true,
+		SilenceErrors: false,
 	}
 	cmd.Flags().StringVarP(&scanFilePath, "file", "f", "", "Path to the Trivy JSON scan result file (required)")
+	cmd.Flags().BoolVar(&enforceGate, "gate", false, "Fail this command when the scan does not meet the configured policy")
 	_ = cmd.MarkFlagRequired("file")
 	return cmd
 }()
@@ -68,10 +84,42 @@ func run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if _, err := client.PostJSON(cmd.Context(), ingestPath, scanData); err != nil {
+	responseBody, err := client.PostJSON(cmd.Context(), ingestPath, scanData)
+	if err != nil {
 		return err
 	}
 
-	fmt.Printf("Uploaded %s (%s) to %s\n", report.ArtifactName, report.ArtifactType, cfg.BaseURL)
+	out := cmd.OutOrStdout()
+	fmt.Fprintf(out, "Uploaded %s (%s) to %s\n", report.ArtifactName, report.ArtifactType, cfg.BaseURL)
+
+	// A backend that predates the gate returns an empty body, and an older one
+	// returns something we do not recognise. Neither is an error: no verdict
+	// means no gate, and the upload still succeeded.
+	var response gate.Response
+	if len(responseBody) > 0 {
+		_ = json.Unmarshal(responseBody, &response)
+	}
+	response.Gate.Render(out)
+
+	if code := response.Gate.ExitCode(enforceGate); code != gate.ExitPassed {
+		return &exitCodeError{code: code, verdict: response.Gate}
+	}
 	return nil
 }
+
+// exitCodeError carries a specific exit code out of RunE. The message is
+// deliberately terse: the verdict itself was already printed in full above, and
+// repeating it under an "Error:" prefix would bury the part that matters.
+type exitCodeError struct {
+	code    int
+	verdict *gate.Verdict
+}
+
+func (e *exitCodeError) Error() string {
+	if e.verdict != nil && e.verdict.Action == gate.ActionUnevaluated {
+		return "the scan could not be judged against the policy"
+	}
+	return "the artifact did not meet the policy"
+}
+
+func (e *exitCodeError) ExitCode() int { return e.code }

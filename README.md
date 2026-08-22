@@ -99,15 +99,58 @@ scan:
     RS_CLIENT_SECRET: $RS_CLIENT_SECRET
 ```
 
+## Failing the build on a policy
+
+Define a policy in the console, then add `--gate`:
+
+```shell
+trivy repo --format json -o scan.json .
+rscli trivy upload-trivy-container-image-scan -f scan.json --gate
+```
+
+```
+Uploaded . (repository) to https://api.reysys.com
+
+Policy: FAILED
+  target   https://github.com/org/repo
+  59 finding(s) at HIGH or above with a fix available; the budget is 0
+
+  FAIL  severity_budget  59 finding(s) at HIGH or above with a fix available; the budget is 0
+  ok    kev              0 finding(s) on the CISA Known Exploited Vulnerabilities catalogue
+  ok    secret           0 secret(s) committed to the repository
+```
+
+Every rule is reported, not just the one that failed, so fixing the first does
+not surface a second you were never told about.
+
+**Without `--gate` the verdict is printed and the command still succeeds.** Run
+it that way first. A team that meets a blocking gate for the first time as an
+unexplained outage turns it off; one that has watched it for a week turns it on.
+
 ## Exit codes
 
 | Code | Meaning |
 |------|---------|
-| 0 | Uploaded |
-| 1 | Failed — the message on stderr says why |
+| 0 | Uploaded, and passed — or no policy is enforced for this target |
+| 1 | The tool could not do its job: bad config, upload failed, or Reysys could not evaluate the scan |
+| 2 | The artifact did not meet the policy |
+| 3 | The scan could not be judged, and the policy says not to allow that |
 
-A failed upload fails the pipeline step, which is usually what you want: a build
-whose scan never reached Reysys should not look the same as one that did.
+Code 1 is never a statement about your code. If our side cannot evaluate a scan
+we allow the build and report it as a tool error, because a pipeline that reds
+during our outage — under a message saying the code failed a security policy —
+is a pipeline whose owner stops gating.
+
+A failed upload also fails the step: a build whose scan never reached Reysys
+should not look the same as one that did.
+
+## Which CI systems this works with
+
+Any of them. The gate is an HTTP call and an exit code, so it runs wherever a
+binary runs — GitHub Actions, GitLab CI, Azure DevOps, Jenkins, Bitbucket,
+CircleCI. What differs between them is only the install step and how the secret
+is supplied. `setup-rscli-action` exists for GitHub Actions; elsewhere,
+`go install` and the provider's own secret store.
 
 ## Development
 
