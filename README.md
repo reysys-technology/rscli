@@ -16,9 +16,26 @@ are published for some releases; check the releases page for the version you wan
 
 ## Credentials
 
-rscli authenticates with an OAuth2 client-credentials pair. Provision one in the
-console under **Account Info → API client**. The secret is shown once, so copy it
-then; if you lose it, rotate rather than provision again.
+rscli authenticates with an OAuth2 client-credentials pair. Create one in the
+console under **Account Info → API clients**, giving it a name that says what
+will hold it (`frontend-ci`, `nightly-scan`). The secret is shown once, so copy
+it then; if you lose it, rotate that client rather than creating another.
+
+> **A client secret is an administrator credential for your account.**
+> It is not scoped to uploading scans: anything the API can do for your account,
+> it can do — read every finding, change integrations, delete data. Treat it the
+> way you would treat an admin password.
+>
+> What follows from that:
+> - Keep it in the CI provider's secret store, never in the repository, and
+>   never in a file the pipeline checks out.
+> - Give each pipeline its own named client. When one leaks you rotate that one;
+>   the others keep running.
+> - On a pull-request pipeline, remember that the branch being built is
+>   attacker-controlled. Do not expose the secret to jobs that run code from a
+>   fork.
+> - Delete clients you no longer use. A forgotten credential is the one nobody
+>   notices being used.
 
 ```shell
 export RS_CLIENT_ID=...
@@ -51,7 +68,8 @@ rscli trivy upload-trivy-container-image-scan -f scan.json
 
 ## In a pipeline
 
-Keep the credentials in the CI provider's secret store, never in the repository.
+Keep the credentials in the CI provider's secret store, never in the repository —
+and see the warning under [Credentials](#credentials) about what one grants.
 
 **GitHub Actions**
 
