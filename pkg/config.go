@@ -81,6 +81,10 @@ func Load() (Config, error) {
 		return Config{}, err
 	}
 
+	if err := cfg.checkBaseURL(); err != nil {
+		return Config{}, err
+	}
+
 	if cfg.ClientID == "" || cfg.ClientSecret == "" {
 		return Config{}, fmt.Errorf(
 			"missing credentials: set RS_CLIENT_ID and RS_CLIENT_SECRET " +
@@ -120,6 +124,36 @@ func (c Config) checkTokenURL() error {
 		}
 		return fmt.Errorf(
 			"refusing to send credentials to %s over %s — the token URL must be https",
+			parsed.Host, parsed.Scheme)
+	}
+	return nil
+}
+
+// checkBaseURL refuses to send the access token somewhere implausible.
+//
+// Guarding the token URL alone was not enough. The credentials are exchanged
+// with the real identity provider, and then every request carries the resulting
+// bearer token to BaseURL — a token that, for now, is full-access for the whole
+// account. So whoever controls BaseURL receives it just as surely, one step
+// later. Demonstrated 2026-08-22: RS_BASE_URL=http://127.0.0.1:8099 delivered a
+// live "Authorization: Bearer ey..." to a plaintext listener while rscli printed
+// a successful-looking result.
+//
+// Same rule as the token URL: https, or http on loopback for local development.
+func (c Config) checkBaseURL() error {
+	parsed, err := url.Parse(c.BaseURL)
+	if err != nil {
+		return fmt.Errorf("base URL %q is not a valid URL: %w", c.BaseURL, err)
+	}
+	if parsed.Host == "" {
+		return fmt.Errorf("base URL %q has no host", c.BaseURL)
+	}
+	if parsed.Scheme != "https" {
+		if parsed.Scheme == "http" && isLoopback(parsed.Hostname()) {
+			return nil
+		}
+		return fmt.Errorf(
+			"refusing to send the access token to %s over %s — the base URL must be https",
 			parsed.Host, parsed.Scheme)
 	}
 	return nil

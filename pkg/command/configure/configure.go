@@ -17,8 +17,8 @@ var Command = &cobra.Command{
 		"|----------|-------------|\n" +
 		"| RS_CLIENT_ID | API client id (required) |\n" +
 		"| RS_CLIENT_SECRET | API client secret (required) |\n" +
-		"| RS_BASE_URL | API base URL (default: https://api.reysys.com) |\n" +
-		"| RS_TOKEN_URL | Token endpoint (default: https://accounts.reysys.com/realms/accounts/protocol/openid-connect/token) |\n" +
+		"| RS_BASE_URL | API base URL (default: https://api.reysys.com). Must be https |\n" +
+		"| RS_TOKEN_URL | Token endpoint (default: https://accounts.reysys.com/realms/accounts/protocol/openid-connect/token). Must be https |\n" +
 		"| RS_INSECURE_SKIP_VERIFY | Skip TLS verification. Local development only — never in CI |\n\n" +
 		"RS_SECRET_ID and RS_SECRET are accepted as aliases for RS_CLIENT_ID and\n" +
 		"RS_CLIENT_SECRET, so existing pipelines keep working.\n\n" +
@@ -30,6 +30,10 @@ var Command = &cobra.Command{
 		"base_url: https://api.reysys.com\n" +
 		"```\n\n" +
 		"Environment variables win over the file.\n\n" +
+		"Both URLs must be https (http is allowed only on loopback, for local\n" +
+		"development). Your credentials go to the token URL and the resulting\n" +
+		"access token goes to the base URL, so whoever controls either one\n" +
+		"receives something worth having.\n\n" +
 		"## In a pipeline\n\n" +
 		"Keep the credentials in the CI provider's secret store, never in the\n" +
 		"repository. GitHub Actions:\n\n" +

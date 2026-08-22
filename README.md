@@ -36,6 +36,11 @@ it then; if you lose it, rotate that client rather than creating another.
 >   fork.
 > - Delete clients you no longer use. A forgotten credential is the one nobody
 >   notices being used.
+>
+> rscli refuses to send either your credentials or the resulting access token
+> over plaintext http: `RS_TOKEN_URL` and `RS_BASE_URL` must both be https
+> (loopback http is allowed, for local development). Redirecting either one was
+> a way to walk off with a full-access token from a single CI variable.
 
 ```shell
 export RS_CLIENT_ID=...
