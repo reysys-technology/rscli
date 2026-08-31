@@ -10,10 +10,12 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 	"time"
 
@@ -38,7 +40,7 @@ func New(ctx context.Context, cfg pkg.Config) (*Client, error) {
 	}
 	client := &Client{
 		cfg:  cfg,
-		http: &http.Client{Transport: transport, Timeout: 2 * time.Minute},
+		http: &http.Client{Transport: transport, Timeout: cfg.HTTPTimeout},
 	}
 	token, err := client.fetchToken(ctx)
 	if err != nil {
@@ -48,10 +50,20 @@ func New(ctx context.Context, cfg pkg.Config) (*Client, error) {
 	return client, nil
 }
 
+// tokenTimeout bounds the credential exchange separately from an upload. The
+// two have nothing in common: a token request is a few hundred bytes and either
+// answers quickly or is not going to. Waiting the upload timeout on an
+// unreachable identity provider would turn a wrong hostname into a ten-minute
+// hang in someone's pipeline.
+const tokenTimeout = 60 * time.Second
+
 // fetchToken runs the OAuth2 client-credentials grant against Keycloak. This is
 // the same exchange the scanner agent performs; the backend reads the account
 // from the token's azp claim.
 func (c *Client) fetchToken(ctx context.Context) (string, error) {
+	ctx, cancel := context.WithTimeout(ctx, tokenTimeout)
+	defer cancel()
+
 	form := url.Values{}
 	form.Set("grant_type", "client_credentials")
 	form.Set("client_id", c.cfg.ClientID)
@@ -108,6 +120,18 @@ func (c *Client) PostJSON(ctx context.Context, path string, body []byte) ([]byte
 
 	response, err := c.http.Do(request)
 	if err != nil {
+		// A timeout here is not the same as an unreachable server, and saying so
+		// matters: the ingest is synchronous, so when the client gives up the
+		// server is usually still working and may well finish. The scan is then
+		// in the console while the pipeline was told the upload failed.
+		if errors.Is(err, context.DeadlineExceeded) || os.IsTimeout(err) {
+			return nil, fmt.Errorf(
+				"%s did not answer within %s. Large reports take longer to store than to send, "+
+					"and the upload may still have completed on the server — check the console "+
+					"before assuming it did not. Raise RS_HTTP_TIMEOUT (a duration such as 20m) "+
+					"if this recurs: %w",
+				endpoint, c.cfg.HTTPTimeout, err)
+		}
 		return nil, fmt.Errorf("reaching %s: %w", endpoint, err)
 	}
 	defer response.Body.Close()

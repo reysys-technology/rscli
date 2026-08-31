@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/url"
 	"strings"
+	"time"
 
 	"github.com/spf13/viper"
 )
@@ -22,6 +23,10 @@ type Config struct {
 	ClientSecret string
 	BaseURL      string
 	TokenURL     string
+	// HTTPTimeout bounds a single request to the API. Uploads dominate it: the
+	// ingest is synchronous, so the wait is however long the server takes to
+	// store the whole report, not how long the bytes take to travel.
+	HTTPTimeout time.Duration
 
 	// InsecureSkipVerify disables TLS certificate verification. It exists for
 	// developers running the stack locally behind a self-signed certificate and
@@ -57,6 +62,7 @@ func Load() (Config, error) {
 		"base_url":             {"RS_BASE_URL"},
 		"token_url":            {"RS_TOKEN_URL"},
 		"insecure_skip_verify": {"RS_INSECURE_SKIP_VERIFY"},
+		"http_timeout":         {"RS_HTTP_TIMEOUT"},
 	} {
 		for _, env := range envs {
 			_ = v.BindEnv(key, env)
@@ -75,6 +81,7 @@ func Load() (Config, error) {
 		BaseURL:            strings.TrimRight(firstNonEmpty(v.GetString("base_url"), defaultBaseURL), "/"),
 		TokenURL:           firstNonEmpty(v.GetString("token_url"), defaultTokenURL),
 		InsecureSkipVerify: v.GetBool("insecure_skip_verify"),
+		HTTPTimeout:        httpTimeout(v.GetString("http_timeout")),
 	}
 
 	if err := cfg.checkTokenURL(); err != nil {
@@ -92,6 +99,36 @@ func Load() (Config, error) {
 				"or put client_id / client_secret in ~/.reysys/config.yaml")
 	}
 	return cfg, nil
+}
+
+// defaultHTTPTimeout is generous on purpose. The old value was two minutes, and
+// a real CI upload hit it: a 4.7 MB image report — 1041 packages, 752 findings —
+// left the ingest still working at 120 s while the API answered other requests
+// in under a second. The client gave up, reported a tool error, and the scan
+// never reached the console, so the gate could not be switched on for anything.
+//
+// A ceiling that a normal upload can exceed is not a safety net; it is a source
+// of false failures. Ten minutes is longer than any report we have measured and
+// still bounded, and RS_HTTP_TIMEOUT moves it without a new release.
+const defaultHTTPTimeout = 10 * time.Minute
+
+// minimumHTTPTimeout stops a typo like RS_HTTP_TIMEOUT=1 (one nanosecond in Go's
+// parser, had we accepted bare numbers) or a deliberate 1s from turning every
+// upload into a failure that looks like a server problem.
+const minimumHTTPTimeout = 30 * time.Second
+
+// httpTimeout reads a Go duration string — "10m", "90s", "1h". An unparseable or
+// absurd value falls back to the default rather than failing the command: a
+// mistyped timeout should not stop a pipeline from uploading its scan.
+func httpTimeout(value string) time.Duration {
+	if value == "" {
+		return defaultHTTPTimeout
+	}
+	parsed, err := time.ParseDuration(value)
+	if err != nil || parsed < minimumHTTPTimeout {
+		return defaultHTTPTimeout
+	}
+	return parsed
 }
 
 func firstNonEmpty(values ...string) string {

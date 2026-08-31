@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
 
 // withEnv sets the credential pair every Load() needs plus whatever else the
@@ -81,5 +82,49 @@ func TestIgnoresAConfigFileInTheWorkingDirectory(t *testing.T) {
 	}
 	if strings.Contains(cfg.BaseURL, "attacker") || strings.Contains(cfg.TokenURL, "attacker") {
 		t.Fatalf("working-directory config.yaml was honoured: base=%q token=%q", cfg.BaseURL, cfg.TokenURL)
+	}
+}
+
+func TestTheUploadTimeoutIsGenerousByDefault(t *testing.T) {
+	// The old value was two minutes, and a real CI upload hit it: a 4.7 MB image
+	// report left the ingest still working at 120 s while the API answered other
+	// requests in under a second. The pipeline was told the upload failed and the
+	// scan never reached the console, so the gate could not be enabled at all.
+	withEnv(t, nil)
+	cfg, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.HTTPTimeout != defaultHTTPTimeout {
+		t.Fatalf("default timeout is %s, want %s", cfg.HTTPTimeout, defaultHTTPTimeout)
+	}
+	if cfg.HTTPTimeout <= 2*time.Minute {
+		t.Fatalf("the default must exceed the value that was measured failing, got %s", cfg.HTTPTimeout)
+	}
+}
+
+func TestTheUploadTimeoutIsConfigurable(t *testing.T) {
+	withEnv(t, map[string]string{"RS_HTTP_TIMEOUT": "25m"})
+	cfg, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.HTTPTimeout != 25*time.Minute {
+		t.Fatalf("RS_HTTP_TIMEOUT was ignored, got %s", cfg.HTTPTimeout)
+	}
+}
+
+func TestAnUnusableTimeoutFallsBackRatherThanFailingTheUpload(t *testing.T) {
+	// A mistyped timeout must not stop a pipeline from uploading its scan, and a
+	// one-second ceiling must not turn every upload into a fake server error.
+	for _, value := range []string{"nonsense", "1s", "0", "-5m", "10"} {
+		withEnv(t, map[string]string{"RS_HTTP_TIMEOUT": value})
+		cfg, err := Load()
+		if err != nil {
+			t.Fatalf("RS_HTTP_TIMEOUT=%q must not fail the command: %v", value, err)
+		}
+		if cfg.HTTPTimeout != defaultHTTPTimeout {
+			t.Fatalf("RS_HTTP_TIMEOUT=%q gave %s, want the default", value, cfg.HTTPTimeout)
+		}
 	}
 }

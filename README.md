@@ -127,6 +127,22 @@ not surface a second you were never told about.
 it that way first. A team that meets a blocking gate for the first time as an
 unexplained outage turns it off; one that has watched it for a week turns it on.
 
+## Large reports
+
+The ingest is synchronous: an upload waits for the server to store the whole
+report, not for the bytes to travel. A container image with a thousand packages
+can take minutes.
+
+`RS_HTTP_TIMEOUT` sets the ceiling, default `10m`:
+
+```shell
+RS_HTTP_TIMEOUT=20m rscli trivy upload-trivy-container-image-scan -f scan.json --gate
+```
+
+If an upload does time out, **the server may still have finished storing it** —
+check the console before assuming otherwise. rscli reports it as a tool error
+(exit 1), never as a policy failure, so a gated pipeline is not failed by it.
+
 ## Exit codes
 
 | Code | Meaning |

@@ -19,7 +19,13 @@ var Command = &cobra.Command{
 		"| RS_CLIENT_SECRET | API client secret (required) |\n" +
 		"| RS_BASE_URL | API base URL (default: https://api.reysys.com). Must be https |\n" +
 		"| RS_TOKEN_URL | Token endpoint (default: https://accounts.reysys.com/realms/accounts/protocol/openid-connect/token). Must be https |\n" +
-		"| RS_INSECURE_SKIP_VERIFY | Skip TLS verification. Local development only — never in CI |\n\n" +
+		"| RS_INSECURE_SKIP_VERIFY | Skip TLS verification. Local development only — never in CI |\n" +
+		"| RS_HTTP_TIMEOUT | How long to wait for one API request (default: 10m) |\n\n" +
+		"The ingest is synchronous, so an upload waits for the server to store the\n" +
+		"whole report — not for the bytes to travel. A large image report can take\n" +
+		"minutes. If an upload times out, the server may still have finished: check\n" +
+		"the console before assuming it did not, and raise RS_HTTP_TIMEOUT (for\n" +
+		"example 20m) if it recurs.\n\n" +
 		"RS_SECRET_ID and RS_SECRET are accepted as aliases for RS_CLIENT_ID and\n" +
 		"RS_CLIENT_SECRET, so existing pipelines keep working.\n\n" +
 		"## Config file\n\n" +
